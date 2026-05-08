@@ -1,23 +1,97 @@
 {% extends "base.html" %}
+{% block title %}Flight Scraper Central — Dashboard{% endblock %}
 
 {% block content %}
-<div class="text-center py-12">
-    <h1 class="text-4xl font-extrabold tracking-tight text-white sm:text-5xl">Centralized Flight Scraper</h1>
-    <p class="mt-4 max-w-2xl mx-auto text-xl text-gray-400">Manage and monitor flight data extraction for Qantas, Airnorth, and Nexus from one dashboard.</p>
-    
-    <div class="mt-10 grid grid-cols-1 gap-8 sm:grid-cols-3">
-        <a href="/qantas" class="bg-gray-800 rounded-lg shadow-lg p-6 hover:bg-gray-700 transition cursor-pointer block">
-            <h3 class="text-2xl font-bold text-red-500 mb-2">Qantas</h3>
-            <p class="text-gray-400">84-day tracker for standard and special routes.</p>
-        </a>
-        <a href="/airnorth" class="bg-gray-800 rounded-lg shadow-lg p-6 hover:bg-gray-700 transition cursor-pointer block">
-            <h3 class="text-2xl font-bold text-blue-500 mb-2">Airnorth</h3>
-            <p class="text-gray-400">Fast async Playwright scraper.</p>
-        </a>
-        <a href="/nexus" class="bg-gray-800 rounded-lg shadow-lg p-6 hover:bg-gray-700 transition cursor-pointer block">
-            <h3 class="text-2xl font-bold text-green-500 mb-2">Nexus</h3>
-            <p class="text-gray-400">Stealth-enabled Playwright scraper.</p>
-        </a>
+<div style="text-align:center; padding: 2.5rem 0 1.5rem;">
+    <h1 style="font-size:2.4rem; font-weight:800; letter-spacing:-0.03em; margin-bottom:0.5rem;">
+        Centralized Flight Scraper
+    </h1>
+    <p style="color:var(--text-secondary); font-size:1.05rem; max-width:540px; margin:0 auto;">
+        Monitor and launch flight data extraction for Qantas, Airnorth & Nexus from one dashboard.
+    </p>
+</div>
+
+<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:1.25rem; margin-top:1.5rem;">
+    {% for key, meta in airlines.items() %}
+    <a href="/{{ key }}" class="card animate-in" id="card-{{ key }}" style="text-decoration:none; color:inherit; cursor:pointer;">
+        <div style="display:flex; align-items:center; gap:0.75rem; margin-bottom:1rem;">
+            <div style="
+                width:48px; height:48px;
+                border-radius: var(--radius-md);
+                background: {{ meta.accent }}15;
+                border: 1px solid {{ meta.accent }}30;
+                display:flex; align-items:center; justify-content:center;
+                font-size:1.5rem;
+            ">{{ meta.icon }}</div>
+            <div>
+                <div style="font-size:1.25rem; font-weight:700; color:{{ meta.accent }};">{{ meta.name }}</div>
+                <span class="badge badge-idle" id="status-{{ key }}">● Idle</span>
+            </div>
+        </div>
+        <p style="color:var(--text-secondary); font-size:0.87rem; line-height:1.5; margin:0;">
+            {{ meta.description }}
+        </p>
+        <div style="margin-top:1rem; display:flex; align-items:center; justify-content:space-between;">
+            <span style="color:var(--text-muted); font-size:0.78rem;" id="files-{{ key }}">—</span>
+            <span style="color:{{ meta.accent }}; font-size:0.82rem; font-weight:600;">Open →</span>
+        </div>
+    </a>
+    {% endfor %}
+</div>
+
+<!-- Quick env status -->
+<div class="card animate-in" style="margin-top:2rem;">
+    <div class="card-header">
+        <span class="card-title">⚙️ Environment</span>
+    </div>
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:0.75rem;">
+        <div style="display:flex; align-items:center; gap:0.5rem; font-size:0.85rem;">
+            <span style="color:var(--accent-green);">●</span>
+            <span style="color:var(--text-secondary);">Flask Server</span>
+            <span style="color:var(--text-primary); font-weight:500; margin-left:auto;">Running</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:0.5rem; font-size:0.85rem;">
+            <span style="color:var(--accent-amber);">●</span>
+            <span style="color:var(--text-secondary);">Render Deployment</span>
+            <span style="color:var(--text-primary); font-weight:500; margin-left:auto;">Ready</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:0.5rem; font-size:0.85rem;">
+            <span style="color:var(--accent-blue);">●</span>
+            <span style="color:var(--text-secondary);">Output Directory</span>
+            <span style="color:var(--text-primary); font-weight:500; margin-left:auto;">./output</span>
+        </div>
     </div>
 </div>
+
+<script>
+    // Quick status poll for all airlines on the dashboard
+    const airlines = ['qantas', 'airnorth', 'nexus'];
+
+    async function dashboardPoll() {
+        for (const airline of airlines) {
+            try {
+                const res = await fetch(`/api/status/${airline}`);
+                const data = await res.json();
+                const badge = document.getElementById(`status-${airline}`);
+                const filesEl = document.getElementById(`files-${airline}`);
+                if (badge) {
+                    if (data.running) {
+                        badge.className = 'badge badge-running';
+                        badge.textContent = '● Running';
+                    } else {
+                        badge.className = 'badge badge-idle';
+                        badge.textContent = '● Idle';
+                    }
+                }
+                if (filesEl) {
+                    const count = data.recent_files ? data.recent_files.length : 0;
+                    filesEl.textContent = count > 0 ? `${count} output file${count > 1 ? 's' : ''}` : 'No files yet';
+                }
+            } catch (e) { /* ignore */ }
+        }
+    }
+
+    dashboardPoll();
+    setInterval(dashboardPoll, 8000);
+</script>
 {% endblock %}

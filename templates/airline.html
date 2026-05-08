@@ -1,0 +1,357 @@
+{% extends "base.html" %}
+{% block title %}{{ meta.name }} Scraper — Flight Scraper Central{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="animate-in" style="display:flex; align-items:center; gap:1rem; margin-bottom:1.5rem; flex-wrap:wrap;">
+    <div style="
+        width:52px; height:52px;
+        border-radius: var(--radius-md);
+        background: {{ meta.accent }}15;
+        border: 1px solid {{ meta.accent }}30;
+        display:flex; align-items:center; justify-content:center;
+        font-size:1.6rem;
+    ">{{ meta.icon }}</div>
+    <div style="flex:1; min-width:200px;">
+        <h1 style="font-size:1.7rem; font-weight:800; letter-spacing:-0.02em; color:{{ meta.accent }};">
+            {{ meta.name }} Scraper
+        </h1>
+        <p style="color:var(--text-secondary); font-size:0.87rem; margin-top:0.15rem;">
+            {{ meta.description }}
+        </p>
+    </div>
+    <span class="badge badge-idle" id="statusBadge">● Idle</span>
+</div>
+
+<!-- Status Alert -->
+<div class="status-bar hidden" id="statusAlert"></div>
+
+<!-- Route Selection -->
+<div class="card section animate-in">
+    <div class="card-header">
+        <span class="card-title">📍 Route Selection</span>
+        <div style="display:flex; gap:0.5rem;">
+            <button class="btn btn-outline btn-sm" id="selectAllBtn" onclick="toggleSelectAll()">Select All</button>
+            <button class="btn btn-outline btn-sm" onclick="clearAll()">Clear</button>
+        </div>
+    </div>
+    <div class="route-grid" id="routeGrid">
+        {% for origin, dest in routes %}
+        <label class="route-chip" id="chip-{{ loop.index0 }}">
+            <input type="checkbox" value="{{ origin }}-{{ dest }}" checked
+                   onchange="updateChipStyle({{ loop.index0 }})">
+            <span>{{ origin }} → {{ dest }}</span>
+        </label>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Controls -->
+<div class="animate-in" style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap; margin-bottom:1.5rem;">
+    <button class="btn btn-primary" id="runBtn" onclick="startScraper()">
+        <span id="runBtnIcon">▶</span>
+        <span id="runBtnText">Start Scraper</span>
+    </button>
+    <span style="color:var(--text-muted); font-size:0.82rem;" id="selectedCount">
+        {{ routes|length }} routes selected
+    </span>
+</div>
+
+<!-- Progress -->
+<div class="card section animate-in" id="progressSection" style="display:none;">
+    <div class="card-header">
+        <span class="card-title">⏳ Progress</span>
+        <span style="color:var(--text-secondary); font-size:0.85rem;" id="progressText">0%</span>
+    </div>
+    <div class="progress-container">
+        <div class="progress-bar active" id="progressBar" style="width:0%"></div>
+    </div>
+    <div style="display:flex; justify-content:space-between; margin-top:0.5rem;">
+        <span style="color:var(--text-muted); font-size:0.78rem;" id="progressDetail">Waiting…</span>
+        <span style="color:var(--text-muted); font-size:0.78rem;" id="elapsedTime"></span>
+    </div>
+</div>
+
+<!-- Live Logs -->
+<div class="card section animate-in">
+    <div class="log-header" style="margin-bottom:0.75rem;">
+        <div style="display:flex; align-items:center; gap:0.75rem;">
+            <div class="terminal-dots">
+                <span class="dot-red"></span>
+                <span class="dot-yellow"></span>
+                <span class="dot-green"></span>
+            </div>
+            <span class="card-title">📋 Live Logs</span>
+        </div>
+        <span style="color:var(--text-muted); font-size:0.78rem;" id="logLineCount">0 lines</span>
+    </div>
+    <div class="log-viewer" id="logViewer">
+        <div class="log-empty">No logs yet. Start the scraper to see output here.</div>
+    </div>
+</div>
+
+<!-- Output Files -->
+<div class="card section animate-in">
+    <div class="card-header">
+        <span class="card-title">📁 Output Files</span>
+        <span style="color:var(--text-muted); font-size:0.78rem;" id="fileCount">0 files</span>
+    </div>
+    <ul class="file-list" id="fileList">
+        <li style="padding:1.5rem 0; text-align:center; color:var(--text-muted); font-size:0.87rem;">
+            No output files yet.
+        </li>
+    </ul>
+</div>
+
+<script>
+    const AIRLINE = '{{ airline }}';
+    let isRunning = false;
+    let startTime = null;
+    let timerInterval = null;
+    let autoScroll = true;
+
+    // ──────────────────────────────────────────────
+    // Route selection
+    // ──────────────────────────────────────────────
+    function getSelectedRoutes() {
+        const checks = document.querySelectorAll('#routeGrid input[type="checkbox"]');
+        const selected = [];
+        checks.forEach(cb => { if (cb.checked) selected.push(cb.value); });
+        return selected;
+    }
+
+    function updateSelectedCount() {
+        const count = getSelectedRoutes().length;
+        document.getElementById('selectedCount').textContent = `${count} route${count !== 1 ? 's' : ''} selected`;
+    }
+
+    function updateChipStyle(idx) {
+        const chip = document.getElementById(`chip-${idx}`);
+        const cb = chip.querySelector('input');
+        if (cb.checked) {
+            chip.classList.add('checked');
+        } else {
+            chip.classList.remove('checked');
+        }
+        updateSelectedCount();
+    }
+
+    function toggleSelectAll() {
+        const checks = document.querySelectorAll('#routeGrid input[type="checkbox"]');
+        const allChecked = Array.from(checks).every(cb => cb.checked);
+        checks.forEach((cb, i) => {
+            cb.checked = !allChecked;
+            updateChipStyle(i);
+        });
+        updateSelectedCount();
+    }
+
+    function clearAll() {
+        const checks = document.querySelectorAll('#routeGrid input[type="checkbox"]');
+        checks.forEach((cb, i) => {
+            cb.checked = false;
+            updateChipStyle(i);
+        });
+        updateSelectedCount();
+    }
+
+    // Init chip styles
+    document.querySelectorAll('#routeGrid input[type="checkbox"]').forEach((cb, i) => updateChipStyle(i));
+
+    // ──────────────────────────────────────────────
+    // Start scraper
+    // ──────────────────────────────────────────────
+    async function startScraper() {
+        const routes = getSelectedRoutes();
+        if (routes.length === 0) {
+            showAlert('Please select at least one route.', 'error');
+            return;
+        }
+
+        const btn = document.getElementById('runBtn');
+        btn.disabled = true;
+        document.getElementById('runBtnIcon').textContent = '⏳';
+        document.getElementById('runBtnText').textContent = 'Starting…';
+
+        try {
+            const res = await fetch(`/api/run/${AIRLINE}`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ selected_routes: routes }),
+            });
+            const data = await res.json();
+            if (data.status === 'started') {
+                showAlert(data.message, 'success');
+                startTime = Date.now();
+                startTimer();
+                document.getElementById('progressSection').style.display = 'block';
+            } else {
+                showAlert(data.message, 'info');
+            }
+        } catch (e) {
+            showAlert('Failed to start scraper. Check server logs.', 'error');
+        }
+
+        pollStatus();
+    }
+
+    // ──────────────────────────────────────────────
+    // Status polling
+    // ──────────────────────────────────────────────
+    async function pollStatus() {
+        try {
+            const res = await fetch(`/api/status/${AIRLINE}`);
+            const data = await res.json();
+            const badge = document.getElementById('statusBadge');
+            const btn = document.getElementById('runBtn');
+
+            if (data.running) {
+                isRunning = true;
+                badge.className = 'badge badge-running';
+                badge.textContent = '● Running';
+                btn.disabled = true;
+                document.getElementById('runBtnIcon').textContent = '⏳';
+                document.getElementById('runBtnText').textContent = 'Running…';
+                document.getElementById('progressSection').style.display = 'block';
+
+                if (!startTime) { startTime = Date.now(); startTimer(); }
+            } else {
+                if (isRunning) {
+                    // Just finished
+                    showAlert('Scraper completed! Check output files below.', 'success');
+                    stopTimer();
+                    document.getElementById('progressBar').style.width = '100%';
+                    document.getElementById('progressBar').classList.remove('active');
+                    document.getElementById('progressText').textContent = '100%';
+                    document.getElementById('progressDetail').textContent = 'Completed';
+                }
+                isRunning = false;
+                badge.className = 'badge badge-idle';
+                badge.textContent = '● Idle';
+                btn.disabled = false;
+                document.getElementById('runBtnIcon').textContent = '▶';
+                document.getElementById('runBtnText').textContent = 'Start Scraper';
+            }
+
+            renderFiles(data.recent_files || []);
+        } catch (e) {
+            console.error('Status poll error:', e);
+        }
+    }
+
+    // ──────────────────────────────────────────────
+    // Log polling
+    // ──────────────────────────────────────────────
+    async function pollLogs() {
+        try {
+            const res = await fetch(`/api/logs/${AIRLINE}?tail=300`);
+            const data = await res.json();
+            const viewer = document.getElementById('logViewer');
+            const lineCount = document.getElementById('logLineCount');
+
+            if (data.logs && data.logs.trim()) {
+                // Escape HTML
+                const escaped = data.logs
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;');
+                viewer.innerHTML = escaped;
+                lineCount.textContent = `${data.lines} lines`;
+
+                // Auto-scroll to bottom
+                if (autoScroll) {
+                    viewer.scrollTop = viewer.scrollHeight;
+                }
+            } else {
+                viewer.innerHTML = '<div class="log-empty">No logs yet. Start the scraper to see output here.</div>';
+                lineCount.textContent = '0 lines';
+            }
+        } catch (e) { /* ignore */ }
+    }
+
+    // Detect manual scroll — pause auto-scroll
+    document.getElementById('logViewer').addEventListener('scroll', function() {
+        const el = this;
+        autoScroll = (el.scrollTop + el.clientHeight >= el.scrollHeight - 30);
+    });
+
+    // ──────────────────────────────────────────────
+    // Render files with download buttons
+    // ──────────────────────────────────────────────
+    function renderFiles(files) {
+        const list = document.getElementById('fileList');
+        const countEl = document.getElementById('fileCount');
+
+        if (!files || files.length === 0) {
+            list.innerHTML = '<li style="padding:1.5rem 0; text-align:center; color:var(--text-muted); font-size:0.87rem;">No output files yet.</li>';
+            countEl.textContent = '0 files';
+            return;
+        }
+
+        countEl.textContent = `${files.length} file${files.length !== 1 ? 's' : ''}`;
+
+        list.innerHTML = files.map(f => {
+            const sizeKB = f.size ? (f.size / 1024).toFixed(1) : '?';
+            const ext = f.name.split('.').pop().toUpperCase();
+            const extColor = ext === 'XLSX' ? 'var(--accent-green)' :
+                             ext === 'CSV'  ? 'var(--accent-blue)' :
+                             ext === 'JSONL' ? 'var(--accent-amber)' : 'var(--text-muted)';
+            return `
+                <li class="file-item">
+                    <div class="file-info">
+                        <span class="file-name">${f.name}</span>
+                        <span class="file-meta">
+                            <span style="color:${extColor}; font-weight:600;">${ext}</span>
+                            &middot; ${sizeKB} KB &middot; ${f.modified_str}
+                        </span>
+                    </div>
+                    <a href="/api/download/${f.path}" class="btn btn-success btn-sm" download>
+                        ⬇ Download
+                    </a>
+                </li>
+            `;
+        }).join('');
+    }
+
+    // ──────────────────────────────────────────────
+    // Helpers
+    // ──────────────────────────────────────────────
+    function showAlert(msg, type) {
+        const el = document.getElementById('statusAlert');
+        el.className = `status-bar ${type}`;
+        el.textContent = msg;
+    }
+
+    function startTimer() {
+        stopTimer();
+        timerInterval = setInterval(() => {
+            if (!startTime) return;
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            const mins = Math.floor(elapsed / 60);
+            const secs = elapsed % 60;
+            document.getElementById('elapsedTime').textContent =
+                `${mins}m ${secs.toString().padStart(2, '0')}s elapsed`;
+        }, 1000);
+    }
+
+    function stopTimer() {
+        if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+    }
+
+    function formatBytes(bytes) {
+        if (!bytes) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    }
+
+    // ──────────────────────────────────────────────
+    // Polling intervals
+    // ──────────────────────────────────────────────
+    pollStatus();
+    pollLogs();
+    setInterval(pollStatus, 5000);
+    setInterval(pollLogs, 3000);
+</script>
+{% endblock %}
