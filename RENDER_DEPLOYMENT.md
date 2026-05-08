@@ -25,7 +25,7 @@ This guide explains how to deploy the Centralized Flight Scraper application on 
      gunicorn app:app
      ```
 4. **Environment Variables**: Scroll down to the Advanced section and add the following:
-   - `PYTHON_VERSION`: `3.10.12` (or your preferred Python 3.9+ version)
+   - `PYTHON_VERSION`: `3.10.12` (or `3.11.8`). **CRITICAL:** Do not skip this! If omitted, Render may default to a very new Python version (like 3.14) where pre-built wheels for `pandas` are not yet available, causing the build to fail.
    - `OXY_USER` and `OXY_PASS`: (If you use the Oxylabs CDP proxy for Airnorth)
    - Any other proxy or secrets your scripts need.
 
