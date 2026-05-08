@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="text-center py-12">
+    <h1 class="text-4xl font-extrabold tracking-tight text-white sm:text-5xl">Centralized Flight Scraper</h1>
+    <p class="mt-4 max-w-2xl mx-auto text-xl text-gray-400">Manage and monitor flight data extraction for Qantas, Airnorth, and Nexus from one dashboard.</p>
+    
+    <div class="mt-10 grid grid-cols-1 gap-8 sm:grid-cols-3">
+        <a href="/qantas" class="bg-gray-800 rounded-lg shadow-lg p-6 hover:bg-gray-700 transition cursor-pointer block">
+            <h3 class="text-2xl font-bold text-red-500 mb-2">Qantas</h3>
+            <p class="text-gray-400">84-day tracker for standard and special routes.</p>
+        </a>
+        <a href="/airnorth" class="bg-gray-800 rounded-lg shadow-lg p-6 hover:bg-gray-700 transition cursor-pointer block">
+            <h3 class="text-2xl font-bold text-blue-500 mb-2">Airnorth</h3>
+            <p class="text-gray-400">Fast async Playwright scraper.</p>
+        </a>
+        <a href="/nexus" class="bg-gray-800 rounded-lg shadow-lg p-6 hover:bg-gray-700 transition cursor-pointer block">
+            <h3 class="text-2xl font-bold text-green-500 mb-2">Nexus</h3>
+            <p class="text-gray-400">Stealth-enabled Playwright scraper.</p>
+        </a>
+    </div>
+</div>
+{% endblock %}
