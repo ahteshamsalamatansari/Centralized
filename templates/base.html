@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Centralized Flight Scraper Dashboard — Monitor and manage Qantas, Airnorth, and Nexus fare extraction.">
+    <meta name="description" content="Centralized Flight Scraper Dashboard — Monitor and manage Qantas, Airnorth, Nexus, and Rex fare extraction.">
     <title>{% block title %}Flight Scraper Central{% endblock %}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -513,6 +513,7 @@
                 <a href="/qantas" {% if request.path == '/qantas' %}class="active"{% endif %}>Qantas</a>
                 <a href="/airnorth" {% if request.path == '/airnorth' %}class="active"{% endif %}>Airnorth</a>
                 <a href="/nexus" {% if request.path == '/nexus' %}class="active"{% endif %}>Nexus</a>
+                <a href="/rex" {% if request.path == '/rex' %}class="active"{% endif %}>Rex</a>
             </div>
         </div>
     </nav>

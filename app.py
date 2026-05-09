@@ -14,6 +14,7 @@ SCRAPERS = {
     "qantas": "qantas_with_headless_final.py",
     "airnorth": "airnorth_fast_async.py",
     "nexus": "scrape_nexus_final.py",
+    "rex": "rex_brightdata.py",
 }
 
 # ── Available routes per airline (mirrors the Python files) ─
@@ -42,6 +43,13 @@ AIRLINE_ROUTES = {
         ("GET", "BME"),
         ("BME", "GET"),
     ],
+    "rex": [
+        ("PER", "ALH"), ("ALH", "PER"),
+        ("PER", "EPR"), ("EPR", "PER"),
+        ("PER", "CVQ"), ("CVQ", "PER"),
+        ("PER", "MJK"), ("MJK", "PER"),
+        ("CVQ", "MJK"), ("MJK", "CVQ"),
+    ],
 }
 
 AIRLINE_META = {
@@ -62,6 +70,12 @@ AIRLINE_META = {
         "accent": "#2ecc71",
         "description": "Stealth-enabled Playwright scraper for WA regional routes.",
         "icon": "🌏",
+    },
+    "rex": {
+        "name": "Rex Airlines",
+        "accent": "#f97316",
+        "description": "Bright Data powered scraper for Rex regional WA routes — Perth, Albany, Esperance, Carnarvon, Monkey Mia.",
+        "icon": "🦊",
     },
 }
 
@@ -128,6 +142,16 @@ def run_scraper(airline):
     # Airnorth: pass --all to skip interactive prompt
     if airline == "airnorth":
         args.append("--all")
+
+    # Rex: pass selected routes and output to output dir
+    if airline == "rex":
+        body = request.get_json(silent=True) or {}
+        selected = body.get("selected_routes", [])
+        rex_output = str(OUTPUT_DIR / "rex_results_all_routes.xlsx")
+        args.extend(["--skip-unblocker-check", "--output", rex_output])
+        if selected:
+            route_str = ",".join(selected)
+            args.extend(["--routes", route_str])
 
     env = os.environ.copy()
 

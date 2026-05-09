@@ -7,7 +7,7 @@
         Centralized Flight Scraper
     </h1>
     <p style="color:var(--text-secondary); font-size:1.05rem; max-width:540px; margin:0 auto;">
-        Monitor and launch flight data extraction for Qantas, Airnorth & Nexus from one dashboard.
+        Monitor and launch flight data extraction for Qantas, Airnorth, Nexus & Rex from one dashboard.
     </p>
 </div>
 
@@ -65,7 +65,7 @@
 
 <script>
     // Quick status poll for all airlines on the dashboard
-    const airlines = ['qantas', 'airnorth', 'nexus'];
+    const airlines = ['qantas', 'airnorth', 'nexus', 'rex'];
 
     async function dashboardPoll() {
         for (const airline of airlines) {
