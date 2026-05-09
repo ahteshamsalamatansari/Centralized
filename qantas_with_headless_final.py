@@ -1146,30 +1146,32 @@ def scrape_route(origin, dest, today, all_rows, filename_ts):
             pass
 
 
-def scrape_all():
+def scrape_all(routes_to_run=None):
     today       = date.today()
     filename_ts = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-    print(f"\n{'═'*60}\n  🛫 Qantas Fare Tracker v10 (Bright Data Browser)\n  Select route(s):")
-    for i, (o, d) in enumerate(ROUTES, 1):
-        print(f"    {i}. {o} → {d}")
-    print(f"    {len(ROUTES) + 1}. All routes\n")
+    if routes_to_run is None:
+        # Interactive mode (direct execution without CLI args)
+        print(f"\n{'═'*60}\n  🛫 Qantas Fare Tracker v10 (Bright Data Browser)\n  Select route(s):")
+        for i, (o, d) in enumerate(ROUTES, 1):
+            print(f"    {i}. {o} → {d}")
+        print(f"    {len(ROUTES) + 1}. All routes\n")
 
-    while True:
-        try:
-            choice = int(input(f"  Enter choice (1-{len(ROUTES)+1}): ").strip())
-            if 1 <= choice <= len(ROUTES):
-                routes = [ROUTES[choice - 1]]
-                break
-            elif choice == len(ROUTES) + 1:
-                routes = list(ROUTES)
-                break
-        except:
-            pass
+        while True:
+            try:
+                choice = int(input(f"  Enter choice (1-{len(ROUTES)+1}): ").strip())
+                if 1 <= choice <= len(ROUTES):
+                    routes_to_run = [ROUTES[choice - 1]]
+                    break
+                elif choice == len(ROUTES) + 1:
+                    routes_to_run = list(ROUTES)
+                    break
+            except:
+                pass
 
     all_rows = []
 
-    for origin, dest in routes:
+    for origin, dest in routes_to_run:
         scrape_route(origin, dest, today, all_rows, filename_ts)
 
     print(f"\n{'═'*60}")
@@ -1204,4 +1206,27 @@ def save(all_rows, ts=None):
 
 
 if __name__ == "__main__":
-    results = scrape_all()
+    import argparse as _ap
+    parser = _ap.ArgumentParser(description="Qantas Fare Tracker")
+    parser.add_argument("--routes", type=str, default=None,
+                        help="Comma-separated routes, e.g. BME-KNX,DRW-KNX")
+    parser.add_argument("--all", action="store_true",
+                        help="Run all routes (non-interactive)")
+    args = parser.parse_args()
+
+    if args.all:
+        routes = list(ROUTES)
+    elif args.routes:
+        routes = []
+        for r in args.routes.split(","):
+            parts = r.strip().split("-")
+            if len(parts) == 2:
+                routes.append((parts[0].upper(), parts[1].upper()))
+        if not routes:
+            print("⚠️  No valid routes parsed from --routes")
+            sys.exit(1)
+    else:
+        routes = None  # Will trigger interactive mode
+
+    results = scrape_all(routes)
+

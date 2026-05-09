@@ -140,14 +140,24 @@ def run_scraper(airline):
     script_name = SCRAPERS[airline]
     args = ["python", script_name]
 
+    # Read selected routes from POST body (used by qantas/rex)
+    body = request.get_json(silent=True) or {}
+    selected = body.get("selected_routes", [])
+
     # Airnorth: pass --all to skip interactive prompt
     if airline == "airnorth":
         args.append("--all")
 
+    # Qantas: pass selected routes via CLI to bypass interactive prompt
+    if airline == "qantas":
+        if selected:
+            route_str = ",".join(selected)
+            args.extend(["--routes", route_str])
+        else:
+            args.append("--all")
+
     # Rex: pass selected routes and output to output dir
     if airline == "rex":
-        body = request.get_json(silent=True) or {}
-        selected = body.get("selected_routes", [])
         rex_output = str(OUTPUT_DIR / "rex_results_all_routes.xlsx")
         args.extend(["--skip-unblocker-check", "--output", rex_output])
         if selected:
