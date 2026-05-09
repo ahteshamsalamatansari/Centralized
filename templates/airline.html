@@ -52,6 +52,10 @@
         <span id="runBtnIcon">▶</span>
         <span id="runBtnText">Start Scraper</span>
     </button>
+    <button class="btn btn-danger" id="stopBtn" onclick="stopScraper()" style="display:none;">
+        <span>⏹</span>
+        <span>Stop Scraper</span>
+    </button>
     <span style="color:var(--text-muted); font-size:0.82rem;" id="selectedCount">
         {{ routes|length }} routes selected
     </span>
@@ -185,6 +189,8 @@
                 startTime = Date.now();
                 startTimer();
                 document.getElementById('progressSection').style.display = 'block';
+                btn.style.display = 'none';
+                document.getElementById('stopBtn').style.display = 'inline-flex';
             } else {
                 showAlert(data.message, 'info');
             }
@@ -196,6 +202,28 @@
     }
 
     // ──────────────────────────────────────────────
+    // Stop scraper
+    // ──────────────────────────────────────────────
+    async function stopScraper() {
+        const stopBtn = document.getElementById('stopBtn');
+        stopBtn.disabled = true;
+        stopBtn.innerHTML = '<span>⏳</span><span>Stopping…</span>';
+
+        try {
+            const res = await fetch(`/api/stop/${AIRLINE}`, {
+                method: 'POST',
+            });
+            const data = await res.json();
+            showAlert(data.message, 'error');
+        } catch (e) {
+            showAlert('Failed to stop scraper.', 'error');
+        }
+
+        // Let status poll handle UI reset
+        setTimeout(pollStatus, 500);
+    }
+
+    // ──────────────────────────────────────────────
     // Status polling
     // ──────────────────────────────────────────────
     async function pollStatus() {
@@ -204,14 +232,16 @@
             const data = await res.json();
             const badge = document.getElementById('statusBadge');
             const btn = document.getElementById('runBtn');
+            const stopBtn = document.getElementById('stopBtn');
 
             if (data.running) {
                 isRunning = true;
                 badge.className = 'badge badge-running';
                 badge.textContent = '● Running';
-                btn.disabled = true;
-                document.getElementById('runBtnIcon').textContent = '⏳';
-                document.getElementById('runBtnText').textContent = 'Running…';
+                btn.style.display = 'none';
+                stopBtn.style.display = 'inline-flex';
+                stopBtn.disabled = false;
+                stopBtn.innerHTML = '<span>\u23f9</span><span>Stop Scraper</span>';
                 document.getElementById('progressSection').style.display = 'block';
 
                 if (!startTime) { startTime = Date.now(); startTimer(); }
@@ -228,9 +258,11 @@
                 isRunning = false;
                 badge.className = 'badge badge-idle';
                 badge.textContent = '● Idle';
+                btn.style.display = 'inline-flex';
                 btn.disabled = false;
                 document.getElementById('runBtnIcon').textContent = '▶';
                 document.getElementById('runBtnText').textContent = 'Start Scraper';
+                stopBtn.style.display = 'none';
             }
 
             renderFiles(data.recent_files || []);

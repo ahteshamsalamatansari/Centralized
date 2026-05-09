@@ -81,6 +81,7 @@ AIRLINE_META = {
 
 # ── Track running processes ─────────────────────────────
 processes = {}
+log_handles = {}
 
 
 # ═══════════════════════════════════════════════════════
@@ -154,10 +155,19 @@ def run_scraper(airline):
             args.extend(["--routes", route_str])
 
     env = os.environ.copy()
+    env["PYTHONUNBUFFERED"] = "1"  # Flush print() immediately so logs show live
+
+    # Close previous log handle if still open
+    if airline in log_handles:
+        try:
+            log_handles[airline].close()
+        except Exception:
+            pass
 
     # Create log file
     log_path = OUTPUT_DIR / f"{airline}_latest.log"
     log_file = open(log_path, "w", encoding="utf-8")
+    log_handles[airline] = log_file
 
     proc = subprocess.Popen(
         args,
@@ -170,6 +180,54 @@ def run_scraper(airline):
     return jsonify({
         "message": f"Started {airline.title()} scraper.",
         "status": "started",
+    })
+
+
+# ═══════════════════════════════════════════════════════
+# API — Stop scraper
+# ═══════════════════════════════════════════════════════
+
+@app.route("/api/stop/<airline>", methods=["POST"])
+def stop_scraper(airline):
+    if airline not in SCRAPERS:
+        return jsonify({"error": "Invalid airline"}), 400
+
+    proc = processes.get(airline)
+    if proc is None or proc.poll() is not None:
+        return jsonify({
+            "message": f"{airline.title()} scraper is not running.",
+            "status": "idle",
+        })
+
+    # Kill the process tree (parent + children)
+    import signal
+    try:
+        proc.terminate()
+        try:
+            proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+    except Exception as e:
+        return jsonify({"error": f"Failed to stop: {e}"}), 500
+
+    # Close log handle
+    if airline in log_handles:
+        try:
+            log_handles[airline].close()
+        except Exception:
+            pass
+
+    # Append stop message to log
+    log_path = OUTPUT_DIR / f"{airline}_latest.log"
+    try:
+        with open(log_path, "a", encoding="utf-8") as f:
+            f.write("\n\n⛔ Scraper stopped by user.\n")
+    except Exception:
+        pass
+
+    return jsonify({
+        "message": f"{airline.title()} scraper stopped.",
+        "status": "stopped",
     })
 
 
