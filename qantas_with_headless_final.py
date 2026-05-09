@@ -80,17 +80,10 @@ def _make_user(country="au"):
 
 def make_driver(country="au"):
     """Connect to Bright Data Scraping Browser — fresh session/IP every call."""
-    from selenium.webdriver.remote.client_config import ClientConfig
-
     user = _make_user(country)
     print(f"  🌐 Connecting to Bright Data (session: {user.split('-session-')[-1]}, country: {country})...")
-    server_url = f"https://{BRIGHTDATA_HOST}:{BRIGHTDATA_PORT}"
-    config     = ClientConfig(
-        remote_server_addr=server_url,
-        username=user,
-        password=BRIGHTDATA_PASS,
-    )
-    connection = Connection(server_url, "goog", "chrome", client_config=config)
+    server_url = f"https://{user}:{BRIGHTDATA_PASS}@{BRIGHTDATA_HOST}:{BRIGHTDATA_PORT}"
+    connection = Connection(server_url, "goog", "chrome")
     opts = Options()
     opts.add_argument("--disable-blink-features=AutomationControlled")
     opts.add_argument("--window-size=1366,768")
