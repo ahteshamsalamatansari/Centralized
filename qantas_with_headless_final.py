@@ -1140,7 +1140,12 @@ def scrape_route(origin, dest, today, all_rows, filename_ts):
 
 
 def scrape_all(routes_to_run=None):
-    today       = date.today()
+    # Use Australian date — Render servers default to UTC which can be a day behind
+    try:
+        from zoneinfo import ZoneInfo
+        today = datetime.now(ZoneInfo("Australia/Perth")).date()
+    except Exception:
+        today = date.today()
     filename_ts = datetime.now().strftime("%Y%m%d_%H%M%S")
 
     if routes_to_run is None:

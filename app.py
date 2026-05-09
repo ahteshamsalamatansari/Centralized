@@ -166,6 +166,7 @@ def run_scraper(airline):
 
     env = os.environ.copy()
     env["PYTHONUNBUFFERED"] = "1"  # Flush print() immediately so logs show live
+    env["TZ"] = "Australia/Perth"  # All scrapers track AU flights — use AU date
 
     # Close previous log handle if still open
     if airline in log_handles:

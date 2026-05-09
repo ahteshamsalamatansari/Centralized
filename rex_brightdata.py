@@ -150,7 +150,12 @@ FLIGHT_LIST_SELECTORS = [
 # ─────────────────────────────────────────────────────────────
 
 def today_dt() -> datetime:
-    return datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    try:
+        from zoneinfo import ZoneInfo
+        return datetime.now(ZoneInfo('Australia/Perth')).replace(
+            hour=0, minute=0, second=0, microsecond=0, tzinfo=None)
+    except Exception:
+        return datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
 
 
 def build_date_list() -> list[datetime]:

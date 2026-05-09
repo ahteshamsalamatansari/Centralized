@@ -113,6 +113,7 @@
     let startTime = null;
     let timerInterval = null;
     let autoScroll = true;
+    let hasStartedThisSession = false;
 
     // ──────────────────────────────────────────────
     // Route selection
@@ -171,6 +172,11 @@
             showAlert('Please select at least one route.', 'error');
             return;
         }
+
+        // Clear old logs immediately
+        document.getElementById('logViewer').innerHTML = '<div class="log-empty">Starting scraper…</div>';
+        document.getElementById('logLineCount').textContent = '0 lines';
+        hasStartedThisSession = true;
 
         const btn = document.getElementById('runBtn');
         btn.disabled = true;
@@ -236,6 +242,7 @@
 
             if (data.running) {
                 isRunning = true;
+                hasStartedThisSession = true;  // Show logs if scraper is already running on page load
                 badge.className = 'badge badge-running';
                 badge.textContent = '● Running';
                 btn.style.display = 'none';
@@ -275,6 +282,9 @@
     // Log polling
     // ──────────────────────────────────────────────
     async function pollLogs() {
+        // Don't show stale logs from previous runs if we haven't started anything
+        if (!hasStartedThisSession && !isRunning) return;
+
         try {
             const res = await fetch(`/api/logs/${AIRLINE}?tail=300`);
             const data = await res.json();
